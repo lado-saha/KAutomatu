@@ -10,6 +10,7 @@ import shutil
 from colorama import init
 import locale
 
+
 # from getmac import get_mac_address
 
 # import uuid
@@ -17,16 +18,29 @@ import locale
 # import os
 
 
-def d()->str:
-    loc = locale.getdefaultlocale()
+def d() -> str:
+    loc = locale.getlocale()
     language_code = loc[0][:2]
     if language_code.lower() == 'fr':
         return ';'
     else:
         return ','
-    
 
-class SubQueryField:
+
+class Status(Enum):
+    SUCCESS = 1
+    FAILED = 2
+    LOADING = 3
+    HEADING = 4
+    NEGATIVE_ATTENTION = 5
+    POSITIVE_ATTENTION = 6
+    T_CYAN = 10
+    T_BLUE = 11
+    T_GREEN = 12
+
+
+
+class SubQueryField(Enum):
     PHONE = 'Numero de telephone'
     DECODER = 'Numero de decodeur'
     SUBSCRIBER_ID = "Id de l'abonner"
@@ -39,7 +53,8 @@ class SubStates(Enum):
     VALIDATED = 'Deja Valider'
     CANCELLED = 'Annuler'
     NOT_FOUND = 'Inconnu'
-    TO_VALIDATE = 'A valider'
+    WAS_ERROR_VALIDATED = "N'a pas pu etre validé. Nous"
+    WAS_SUCCESS_VALIDATED = "A pu etre validé"
     NO_PRESTATION = 'Aucune Prestation'
     NONE = ''
 
@@ -48,8 +63,8 @@ class SubStates(Enum):
 
 
 class PrestationState(Enum):
-    VALIDATED = 'Valider'
-    CANCELLED = 'Annuler'
+    VALIDATED = 'Validé'
+    CANCELLED = 'Annulé'
     UNKNOWN_DECODER = 'Decodeur Inconnu'
     NO_PRESTATION = 'Aucune Prestation'
     NONE = ''
@@ -88,7 +103,7 @@ def init_app() -> bool:
 
 
 def re_init_app():
-    println("Suppression des Donnees", Status.LOADING)
+    println("Suppression des Donnees", Status.SUCCESS)
     shutil.rmtree(PATH_BASE)
     println("Suppression des Donnees", Status.SUCCESS)
     println("Reinitialisation", Status.LOADING)
@@ -98,24 +113,24 @@ def re_init_app():
 
 class NavigationUiState:
     def __init__(
-        self,
-        session_id: str = '',
-        session_url: str = '',
-        is_login_cga: bool = False,
-        is_login_alonwa: bool = False,
-        is_cga_prospect_open: bool = False,
-        frame_cga_title: any = '',
-        frame_cga_main: any = '',
-        frame_cga_info: any = '',
-        page_cga_home: str = '',
-        page_cga_prospect: str = '',
-        page_alonwa_home: str = '',
-        page_alonwa_tech_profile: str = '',
-        page_alonwa_tech_planning: str = '',
-        page_alonwa_intervention: str = '',
-        page_alonwa_intervention_details: str = '',
-        page_alonwa_closure: str = '',
-        error: str = '',
+            self,
+            session_id: str = '',
+            session_url: str = '',
+            is_login_cga: bool = False,
+            is_login_alonwa: bool = False,
+            is_cga_prospect_open: bool = False,
+            frame_cga_title: any = '',
+            frame_cga_main: any = '',
+            frame_cga_info: any = '',
+            page_cga_home: str = '',
+            page_cga_prospect: str = '',
+            page_alonwa_home: str = '',
+            page_alonwa_tech_profile: str = '',
+            page_alonwa_tech_planning: str = '',
+            page_alonwa_intervention: str = '',
+            page_alonwa_intervention_details: str = '',
+            page_alonwa_closure: str = '',
+            error: str = '',
     ):
         """Initializes the navigation UI state."""
         self.session_id = session_id
@@ -165,7 +180,8 @@ class UserLogin:
 
 
 class Subscriber:
-    def __init__(self, decoder_num: str = '', sub_id: str = '', name: str = '',  formula: str = '', phone='',  link: any = None, tech_id: str = '', expiry_date: str = '', state: SubStates = SubStates.NONE):
+    def __init__(self, decoder_num: str = '', sub_id: str = '', name: str = '', formula: str = '', phone='',
+                 link: any = None, tech_id: str = '', expiry_date: str = '', state: SubStates = SubStates.NONE):
         """Initializes the subscriber.
         Args:
             sub_id: The subscriber ID.
@@ -202,14 +218,16 @@ class Subscriber:
             pass
         return f"\n{self.decoder_num}{d()} {self.sub_id}{d()} {self.phone}{d()} {self.name}{d()} {self.formula}{d()} {start}{d()} {stop}{d()} {self.state}"
 
+    def report_phone(self) -> str:
+        return f"\n{self.sub_id}{d()}{self.phone}{d()}"
 
 class Prestation:
     def __init__(
-        self,
-        decoder_num: str = '',
-        tech_cga_ref: str = '',
-        sub_id: str = '',
-        state: PrestationState = PrestationState.NONE
+            self,
+            decoder_num: str = '',
+            tech_cga_ref: str = '',
+            sub_id: str = '',
+            state: PrestationState = PrestationState.NONE
     ) -> None:
         self.decoder_num = decoder_num
         self.tech_cga_ref = tech_cga_ref
@@ -279,6 +297,28 @@ def gen_subscriber_data_report(subscribers: list[Subscriber], query_field: SubQu
         os.startfile(f.name)
         println(f"Ouverture du rapport", Status.SUCCESS)
 
+def gen_subscriber_data_report_phone(subscribers: list[Subscriber]):
+    println(f"Generation du Rapport Excel", Status.LOADING)
+    now = datetime.datetime.now()
+    report = f"""
+    Kentech AUTOMATU{d()} By KENTECH{d()}6919409777{d()}ladokihosaha@gmail.com{d()}{d()}{d()}{d()}{d()}
+    Generé le {now.strftime('%Y-%m-%d %H:%M:%S')}{d()}
+    Titre: Numéros de téléphone des abonnés{d()}
+    ALONWA name: {get_alonwa_user().username}{d()}
+    
+     Num Abonne{d()} Numéro de téléphone{d()}"""
+    if len(subscribers) == 0:
+        report += "\nUne erreur c'est produite"
+    else:
+        for sub in subscribers:
+            report += sub.report_phone()
+    path = f"{PATH_BASE_SUBS_DATA}\\telephone_par_{now.strftime('%Y-%m-%d %H-%M')}.csv"
+    with open(path, 'w') as f:
+        f.write(report)
+        println(f"Rapport Excel: {path}", Status.SUCCESS)
+        println(f"Ouverture du rapport", Status.LOADING)
+        os.startfile(f.name)
+        println(f"Ouverture du rapport", Status.SUCCESS)
 
 def gen_temp_termination_report(month: int, subscribers: list[Subscriber]):
     println(f"Generation du Rapport Excel", Status.LOADING)
@@ -332,20 +372,12 @@ def gen_qualifier_termination_report(subscribers: list[Subscriber]):
         println(f"Ouverture du rapport", Status.SUCCESS)
 
 
-class Status:
-    SUCCESS = 1
-    FAILED = 2
-    LOADING = 3
-    HEADING = 4
-    ATTENTION = 5
-
-
 def report_init(path: str):
     with open(path, 'w') as f:
         f.write("")
 
 
-class bcolors:
+class Bcolors:
     HEADER = '\033[1m'
     OKBLUE = '\033[94m'
     OKCYAN = '\033[96m'
@@ -357,17 +389,45 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-def println(text: str,  status: Status | None = None, delay=0.001):
+class InterventionState(Enum):
+    TERMINATED_OK = 'Terminée OK'
+    VALIDATED = 'Validée'
+    TO_QUALIFY = 'A qualifier'
+    TO_PLANIFY = 'A planifier'
+
+    @property
+    def menu_item(self):
+        if self == InterventionState.TERMINATED_OK:
+            return 'ui-id-10'
+        elif self == InterventionState.VALIDATED:
+            return 'ui-id-11'
+        elif self == InterventionState.TO_QUALIFY:
+            return 'ui-id-4'
+        elif self == InterventionState.TO_PLANIFY:
+            return 'ui-id-3'
+        else:
+            return ''
+
+
+def println(text: str, status: Status | None = None, delay=0.001):
     if status == Status.FAILED:
-        text = bcolors.FAIL + 'Echec: ' + text + bcolors.ENDC
+        text = Bcolors.FAIL + 'Echec: ' + text + Bcolors.ENDC
     elif status == Status.LOADING:
-        text = bcolors.WARNING + 'Patienter: ' + text + bcolors.ENDC
+        text = Bcolors.WARNING + 'Patienter: ' + text + Bcolors.ENDC
     elif status == Status.SUCCESS:
-        text = bcolors.OKGREEN + 'Reussi: ' + text + bcolors.ENDC
+        text = Bcolors.OKGREEN + 'Réussi: ' + text + Bcolors.ENDC
     elif status == Status.HEADING:
-        text = bcolors.BOLD + text + bcolors.ENDC
-    elif status == Status.ATTENTION:
-        text = bcolors.FAIL + text + bcolors.ENDC
+        text = Bcolors.BOLD + text + Bcolors.ENDC
+    elif status == Status.NEGATIVE_ATTENTION:
+        text = Bcolors.FAIL + text + Bcolors.ENDC
+    elif status == Status.POSITIVE_ATTENTION:
+        text = Bcolors.OKBLUE + text + Bcolors.ENDC
+    elif status == Status.T_CYAN:
+        text = Bcolors.OKCYAN + text + Bcolors.ENDC
+    elif status == Status.T_BLUE:
+        text = Bcolors.OKBLUE + text + Bcolors.ENDC
+    elif status == Status.T_GREEN:
+        text = Bcolors.OKGREEN + text + Bcolors.ENDC
 
     for char in str(text):
         print(char, end='', flush=True)
@@ -486,7 +546,7 @@ def clear_cga_account():
 
 
 def clear_alonwa_account():
-    println(f"Suppression du Compte Alonwa",  Status.LOADING)
+    println(f"Suppression du Compte Alonwa", Status.LOADING)
     with open(PATH_FILE_ACCOUNT, 'r') as f:
         data = json.load(f)
     del data['alonwa']
@@ -525,12 +585,9 @@ def get_tech_ids():
         return f.readlines()[:-1]
 
 
-import datetime
-
 def can_write_files():
     today = datetime.datetime.today()
-    
-    if today.year != 2023:  
+    if today.year != 2023:
         return False
     if today.weekday() != 0:
         return False
@@ -544,6 +601,7 @@ def can_write_files():
         return False
 
     return True
+
 
 def mac_matters() -> bool:
     is_permitted = can_write_files()
@@ -576,18 +634,21 @@ def mac_matters() -> bool:
         with open(secret, 'rb') as f_secret, open(key, 'rb') as f_key:
             crypter = Fernet(f_key.read())
             dec_data = crypter.decrypt(f_secret.read()).decode().strip()
-            left = 30 - int((time.time() - float(dec_data))/(3600*24))
+            left = 30 - int((time.time() - float(dec_data)) / (3600 * 24))
             if left <= 0:
-                println("Votre abonnement a expire. Veuillez nous contacter (Kentech) pour obtenir la version Complete.", Status.FAILED)
-                println("Tel: 691940977",  Status.ATTENTION)
-                println("Email: ladokihosaha@gmail.com",  Status.ATTENTION)
+                println(
+                    "Votre abonnement a expire. Veuillez nous contacter (Kentech) pour obtenir la version Complete.",
+                    Status.FAILED)
+                println("Tel: 691940977", Status.NEGATIVE_ATTENTION)
+                println("Email: ladokihosaha@gmail.com", Status.NEGATIVE_ATTENTION)
                 return False
             else:
                 return True
     except Exception as e:
         print(e)
-        println("Votre abonnement se limite a une seul machine. Pour augmenter le nombre de postes, veuillez nous contacter pour la version complete", Status.FAILED)
-        println("Tel: 691940977",  Status.ATTENTION)
-        println("Email: ladokihosaha@gmail.com", Status.ATTENTION)
+        println(
+            "Votre abonnement se limite a une seul machine. Pour augmenter le nombre de postes, veuillez nous contacter pour la version complete",
+            Status.FAILED)
+        println("Tel: 691940977", Status.NEGATIVE_ATTENTION)
+        println("Email: ladokihosaha@gmail.com", Status.NEGATIVE_ATTENTION)
         return False
-    
