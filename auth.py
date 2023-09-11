@@ -5,7 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 
-from common import NavigationUiState, Status, UserLogin, println
+from common import NavigationUiState, Status, println, CGAAccount, AlonwaAccount
 
 LOGIN_CGA_URL = 'https://cgaweb-afrique.canal-plus.com/cgaweb/'
 LOGIN_ALONWA_URL = 'https://serviceplus.canal-plus.com/'
@@ -14,19 +14,19 @@ LOGIN_ALONWA_URL = 'https://serviceplus.canal-plus.com/'
 def login_to_cga(
         driver: webdriver.Edge,
         wait: WebDriverWait,
-        user: UserLogin,
+        account: CGAAccount,
         uis: NavigationUiState
 ) -> bool:
     if not uis.is_login_cga:
         try:
-            println(f"Connexion entant que {user.username} sur CGA", Status.LOADING)
+            println(f"Connexion entant que {account.name} sur CGA {account.region}", Status.LOADING)
             driver.get(LOGIN_CGA_URL)
             iframe = driver.find_element(By.NAME, 'cgaweb')
             driver.switch_to.frame(iframe)
             username_field = driver.find_element(By.ID, 'cuser')
-            username_field.send_keys(user.username)
+            username_field.send_keys(account.name)
             password_field = driver.find_element(By.ID, 'pass')
-            password_field.send_keys(user.password)
+            password_field.send_keys(account.password)
             # Find the login button and click it
             login_button = driver.find_element(By.NAME, 'login')
             login_button.click()
@@ -88,17 +88,17 @@ def logout_from_alonwa(
 def login_to_alonwa(
         driver: webdriver.Edge,
         wait: WebDriverWait,
-        user: UserLogin,
+        account: AlonwaAccount,
         uis: NavigationUiState,
 ) -> bool:
     if not uis.is_login_alonwa:
-        println(f"Connexion entant que {user.username} sur CANAL ALONWA", Status.LOADING)
+        println(f"Connexion entant que {account.name} sur Service plus {account.region}", Status.LOADING)
         try:
             driver.get(LOGIN_ALONWA_URL)
             username_field = driver.find_element(By.ID, 'in_username')
-            username_field.send_keys(user.username)
+            username_field.send_keys(account.name)
             password_field = driver.find_element(By.ID, 'in_password')
-            password_field.send_keys(user.password)
+            password_field.send_keys(account.password)
             login_button = driver.find_element(By.CLASS_NAME, "submit")
             login_button.click()
             wait.until(ec.visibility_of_element_located((By.ID, 'home_header')))

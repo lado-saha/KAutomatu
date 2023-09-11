@@ -1,14 +1,15 @@
-import base64
 import datetime
-from enum import Enum
-import msvcrt
-import subprocess
-import time
 import json
+import locale
+import msvcrt
 import os
 import shutil
+import subprocess
+import time
+import uuid
+from enum import Enum
+
 from colorama import init
-import locale
 
 
 # from getmac import get_mac_address
@@ -16,7 +17,6 @@ import locale
 # import uuid
 
 # import os
-
 
 def d() -> str:
     loc = locale.getlocale()
@@ -37,7 +37,6 @@ class Status(Enum):
     T_CYAN = 10
     T_BLUE = 11
     T_GREEN = 12
-
 
 
 class SubQueryField(Enum):
@@ -74,7 +73,7 @@ class PrestationState(Enum):
 
 
 PATH_BASE = os.path.expanduser('~/Documents') + '\\Kentech AUTOMATU'
-PATH_FILE_ACCOUNT = PATH_BASE + '\\DB\\account.json'
+PATH_FILE_ACCOUNT = PATH_BASE + '\\DB\\account_v2.json'
 PATH_FILE_TECH_IDS = PATH_BASE + '\\DB\\tech_ids.txt'
 PATH_BASE_TEMP_REPORT = PATH_BASE + '\\Rapports\\Clotures des temporaires'
 PATH_BASE_QUALIF_REPORT = PATH_BASE + '\\Rapports\\Clotures des à qualifiers'
@@ -103,12 +102,16 @@ def init_app() -> bool:
 
 
 def re_init_app():
-    println("Suppression des Donnees", Status.SUCCESS)
-    shutil.rmtree(PATH_BASE)
-    println("Suppression des Donnees", Status.SUCCESS)
-    println("Reinitialisation", Status.LOADING)
-    init_app()
-    println("Reinitialisation", Status.SUCCESS)
+    try:
+        println("Suppression des Donnees", Status.SUCCESS)
+        shutil.rmtree(PATH_BASE)
+        println("Suppression des Donnees", Status.SUCCESS)
+        println("Reinitialisation", Status.LOADING)
+        init_app()
+        println("Reinitialisation", Status.SUCCESS)
+    except Exception as e:
+        if e is PermissionError:
+            println("Suppression Incomplete. Veuillez fermer tout les rapport excel", Status.FAILED)
 
 
 class NavigationUiState:
@@ -173,12 +176,6 @@ class NavigationUiState:
         )
 
 
-class UserLogin:
-    def __init__(self, username: str, password: str) -> None:
-        self.username = username
-        self.password = password
-
-
 class Subscriber:
     def __init__(self, decoder_num: str = '', sub_id: str = '', name: str = '', formula: str = '', phone='',
                  link: any = None, tech_id: str = '', expiry_date: str = '', state: SubStates = SubStates.NONE):
@@ -221,6 +218,7 @@ class Subscriber:
     def report_phone(self) -> str:
         return f"\n{self.sub_id}{d()}{self.phone}{d()}"
 
+
 class Prestation:
     def __init__(
             self,
@@ -247,72 +245,68 @@ def gen_prestation_data_report(prestations: list[Prestation]):
     println(f"Generation du Rapport Excel", Status.LOADING)
     now = datetime.datetime.now()
     report = f"""
-    Kentech AUTOMATU{d()} By KENTECH{d()} 6919409777{d()}ladokihosaha@gmail.com{d()}{d()}{d()}{d()}{d()}
-    Generé le {now.strftime('%Y-%m-%d %H:%M:%S')}{d()}{d()}{d()}{d()}{d()}{d()}{d()}
-    Titre: Etats des Prestations{d()}{d()}{d()}{d()}{d()}{d()}{d()}
-    CGA name: {get_cga_user().username}{d()}{d()}{d()}{d()}{d()}{d()}{d()}
-    {d()}{d()}{d()}{d()}{d()}
-    Num Decodeur{d()} Num Abonne{d()} Etat, Referenc{d()} CGA Antenist"""
+    Kentech AUTOMATU{d()} By KENTECH{d()} 6919409777{d()}ladokihosaha@gmail.com
+    Generé le {now.strftime('%Y-%m-%d() %H:%M:%S')}{d()}{d()}
+    Titre: Etats des Prestations{d()}{d()}
+    {get_default_cga_account().desc_str}
+    
+    Num Decodeur{d()} Num Abonne{d()} Etat, Reference{d()} CGA Antenist"""
     if len(prestations) == 0:
         report += "\nUne erreur c'est produite"
     else:
         for presentation in prestations:
             report += presentation.__str__()
 
-    path = f"{PATH_BASE_PRESTATION_STATE}\\donnes_prestation_{now.strftime('%Y-%m-%d %H-%M')}.csv"
+    path = f"{PATH_BASE_PRESTATION_STATE}\\donnes_prestation_{now.strftime('%Y-%m-%d() %H-%M')}.csv"
     with open(path, 'w') as f:
         f.write(report)
         println(f"Rapport Excel: {path}", Status.SUCCESS)
         println(f"Ouverture du rapport", Status.LOADING)
         os.startfile(f.name)
         println(f"Ouverture du rapport", Status.SUCCESS)
-
-
-"""
-    Ai type print
-"""
 
 
 def gen_subscriber_data_report(subscribers: list[Subscriber], query_field: SubQueryField):
     println(f"Generation du Rapport Excel", Status.LOADING)
     now = datetime.datetime.now()
     report = f"""
-    Kentech AUTOMATU{d()} By KENTECH{d()}6919409777{d()}ladokihosaha@gmail.com{d()}{d()}{d()}{d()}{d()}
-    Generé le {now.strftime('%Y-%m-%d %H:%M:%S')}{d()}{d()}{d()}{d()}{d()}{d()}{d()}
-    Titre: Donnees des Abonnes{d()}{d()}{d()}{d()}{d()}{d()}{d()}
-    Recharcher par: {query_field}{d()}{d()}{d()}{d()}{d()}{d()}{d()}
-    CGA name: {get_cga_user().username}{d()}{d()}{d()}{d()}{d()}{d()}{d()}
-    {d()}{d()}{d()}{d()}{d()}
-    Num Decodeur{d()} Num Abonne{d()} Numero de telephone{d()} Nom d'abonne{d()} Formule{d()} Debut{d()} Fin{d()} Etat"""
+    Kentech AUTOMATU{d()} By KENTECH{d()}6919409777{d()}ladokihosaha@gmail.com
+    Generé le {now.strftime('%Y-%m-%d() %H:%M:%S')}{d()}{d()}
+    Titre: Donnees des Abonnes{d()}{d()}
+    Recharcher par: {query_field}{d()}{d()}
+    {get_default_cga_account().desc_str}
+    
+    Num Decodeur{d()} Num Abonne{d()} Numero de telephone{d()} Nom d()'abonne{d()} Formule{d()} Debut{d()} Fin{d()} Etat"""
     if len(subscribers) == 0:
         report += "\nUne erreur c'est produite"
     else:
         for sub in subscribers:
             report += sub.report_for_data()
-    path = f"{PATH_BASE_SUBS_DATA}\\donnes_par_{query_field}_{now.strftime('%Y-%m-%d %H-%M')}.csv"
+    path = f"{PATH_BASE_SUBS_DATA}\\donnes_par_{query_field}_{now.strftime('%Y-%m-%d() %H-%M')}.csv"
     with open(path, 'w') as f:
         f.write(report)
         println(f"Rapport Excel: {path}", Status.SUCCESS)
         println(f"Ouverture du rapport", Status.LOADING)
         os.startfile(f.name)
         println(f"Ouverture du rapport", Status.SUCCESS)
+
 
 def gen_subscriber_data_report_phone(subscribers: list[Subscriber]):
     println(f"Generation du Rapport Excel", Status.LOADING)
     now = datetime.datetime.now()
     report = f"""
-    Kentech AUTOMATU{d()} By KENTECH{d()}6919409777{d()}ladokihosaha@gmail.com{d()}{d()}{d()}{d()}{d()}
-    Generé le {now.strftime('%Y-%m-%d %H:%M:%S')}{d()}
+    Kentech AUTOMATU{d()} By KENTECH{d()}6919409777{d()}ladokihosaha@gmail.com
+    Generé le {now.strftime('%Y-%m-%d() %H:%M:%S')}{d()}
     Titre: Numéros de téléphone des abonnés{d()}
-    ALONWA name: {get_alonwa_user().username}{d()}
+    {get_default_alonwa_account().desc_str}
     
-     Num Abonne{d()} Numéro de téléphone{d()}"""
+    Num Abonne{d()} Numéro de téléphone{d()}"""
     if len(subscribers) == 0:
         report += "\nUne erreur c'est produite"
     else:
         for sub in subscribers:
             report += sub.report_phone()
-    path = f"{PATH_BASE_SUBS_DATA}\\telephone_par_{now.strftime('%Y-%m-%d %H-%M')}.csv"
+    path = f"{PATH_BASE_SUBS_DATA}\\telephone_par_{now.strftime('%Y-%m-%d() %H-%M')}.csv"
     with open(path, 'w') as f:
         f.write(report)
         println(f"Rapport Excel: {path}", Status.SUCCESS)
@@ -320,25 +314,26 @@ def gen_subscriber_data_report_phone(subscribers: list[Subscriber]):
         os.startfile(f.name)
         println(f"Ouverture du rapport", Status.SUCCESS)
 
+
 def gen_temp_termination_report(month: int, subscribers: list[Subscriber]):
     println(f"Generation du Rapport Excel", Status.LOADING)
     now = datetime.datetime.now()
-
     report = f"""
     Kentech AUTOMATU{d()} By KENTECH{d()} 6919409777{d()}ladokihosaha@gmail.com{d()}{d()}{d()}
-    Generé le {now.strftime('%Y-%m-%d %H:%M:%S')}{d()}{d()}{d()}{d()}{d()}
-    Titre: Clotures des temporaires{d()}{d()}{d()}{d()}{d()}
-    Mois: {month}{d()}{d()}{d()}{d()}{d()}
-    CGA name: {get_cga_user().username}{d()}{d()}{d()}{d()}{d()}
-    ALNONWA name: {get_alonwa_user().username}{d()}{d()}{d()}{d()}{d()}
-    {d()}{d()}{d()}{d()}{d()}
+    Generé le {now.strftime('%Y-%m-%d() %H:%M:%S')}
+    Titre: Clotures des temporaires
+    Mois: {month}
+    {get_default_cga_account().desc_str}
+    {get_default_alonwa_account().desc_str}
+    
     Num Decodeur{d()} Num Abonne{d()} Nom Abonne{d()} Formule{d()} Etat{d()} ID du tech"""
+
     if len(subscribers) == 0:
         report += "\nUne erreur c'est produite"
     else:
         for sub in subscribers:
             report += sub.report_for_temp_termination()
-    path = f"{PATH_BASE_TEMP_REPORT}\\temp_{month}_{now.strftime('%Y-%m-%d %H-%M')}.csv"
+    path = f"{PATH_BASE_TEMP_REPORT}\\temp_{month}_{now.strftime('%Y-%m-%d() %H-%M')}.csv"
     with open(path, 'w') as f:
         f.write(report)
         println(f"Rapport Excel: {path}", Status.SUCCESS)
@@ -352,18 +347,18 @@ def gen_qualifier_termination_report(subscribers: list[Subscriber]):
     now = datetime.datetime.now()
 
     report = f"""Kentech AUTOMATU{d()} By KENTECH{d()} 6919409777{d()}ladokihosaha@gmail.com,,,
-    Generé le {now.strftime('%Y-%m-%d %H:%M:%S')}{d()}{d()}{d()}{d()}{d()}
-    Titre: Clotures des 'A qualifiers'{d()}{d()}{d()}{d()}{d()}
-    CGA name: {get_cga_user().username}{d()}{d()}{d()}{d()}{d()}
-    ALNONWA name: {get_alonwa_user().username}{d()}{d()}{d()}{d()}{d()}
-    {d()}{d()}{d()}{d()}{d()}
+    Generé le {now.strftime('%Y-%m-%d() %H:%M:%S')}
+    Titre: Clotures des 'A qualifiers'
+    {get_default_cga_account().desc_str}
+    {get_default_alonwa_account().desc_str}
+    
     Num Decodeur{d()} Num Abonne{d()} Nom Abonne{d()} Formule{d()} Etat{d()} ID du tech"""
     if len(subscribers) == 0:
         report += "\nUne erreur c'est produite"
     else:
         for sub in subscribers:
             report += sub.report_for_temp_termination()
-    path = f"{PATH_BASE_QUALIF_REPORT}\\qual_{now.strftime('%Y-%m-%d %H-%M')}.csv"
+    path = f"{PATH_BASE_QUALIF_REPORT}\\qual_{now.strftime('%Y-%m-%d() %H-%M')}.csv"
     with open(path, 'w') as f:
         f.write(report)
         println(f"Rapport Excel: {path}", Status.SUCCESS)
@@ -475,7 +470,7 @@ def has_cga_account():
     try:
         with open(PATH_FILE_ACCOUNT, 'r') as f:
             data = json.load(f)
-            data['cga']
+            x = data['cga']
             return True
     except Exception as e:
         return False
@@ -485,54 +480,10 @@ def has_alonwa_account():
     try:
         with open(PATH_FILE_ACCOUNT, 'r') as f:
             data = json.load(f)
-            data['alonwa']
+            x = data['alonwa']
             return True
     except Exception as e:
         return False
-
-
-def save_cga_account_to_db(name: str, password: str):
-    println('Enregistrement du compte', Status.LOADING)
-    try:
-        with open(PATH_FILE_ACCOUNT, 'r') as file:
-            data = json.load(file)
-            data['cga'] = {
-                'name': name,
-                'password': password
-            }
-    except Exception as e:
-        data = {
-            'cga': {
-                'name': name,
-                'password': password
-            }
-        }
-
-    with open(PATH_FILE_ACCOUNT, 'w') as file:
-        json.dump(data, file)
-    println('Enregistrement Terminer', Status.SUCCESS)
-
-
-def save_alonwa_account_to_db(name: str, password: str):
-    println('Enregistrement du compte', Status.LOADING)
-    try:
-        with open(PATH_FILE_ACCOUNT, 'r') as file:
-            data = json.load(file)
-            data['alonwa'] = {
-                'name': name,
-                'password': password
-            }
-    except Exception as e:
-        data = {
-            'alonwa': {
-                'name': name,
-                'password': password
-            }
-        }
-
-    with open(PATH_FILE_ACCOUNT, 'w') as file:
-        json.dump(data, file)
-    println('Enregistrement Terminer', Status.SUCCESS)
 
 
 def clear_cga_account():
@@ -560,24 +511,6 @@ def clear_tech_ids():
     with open(PATH_FILE_TECH_IDS, 'w') as f:
         f.truncate(0)
     println(f"Suppression terminer", Status.SUCCESS)
-
-
-def get_alonwa_user():
-    with open(PATH_FILE_ACCOUNT, 'r') as f:
-        data = json.load(f)
-        return UserLogin(
-            username=data['alonwa'].get("name"),
-            password=data['alonwa'].get("password"),
-        )
-
-
-def get_cga_user():
-    with open(PATH_FILE_ACCOUNT, 'r') as f:
-        data = json.load(f)
-        return UserLogin(
-            username=data['cga'].get("name"),
-            password=data['cga'].get("password")
-        )
 
 
 def get_tech_ids():
@@ -643,6 +576,7 @@ def mac_matters() -> bool:
                 println("Email: ladokihosaha@gmail.com", Status.NEGATIVE_ATTENTION)
                 return False
             else:
+                print(left)
                 return True
     except Exception as e:
         print(e)
@@ -652,3 +586,287 @@ def mac_matters() -> bool:
         println("Tel: 691940977", Status.NEGATIVE_ATTENTION)
         println("Email: ladokihosaha@gmail.com", Status.NEGATIVE_ATTENTION)
         return False
+
+
+class AlonwaAccount:
+    def __init__(
+            self,
+            region: str,
+            name: str,
+            password: str,
+            account_id: str,
+            is_default: bool = False
+    ):
+        self.account_id = account_id
+        self.region = region
+        self.name = name
+        self.password = password
+        self.is_default = is_default
+
+    @property
+    def to_dict(self):
+        return {
+            'account_id': self.account_id,
+            'name': self.name,
+            'region': self.region,
+            'password': self.password
+        }
+
+    @property
+    def desc_str(self):
+        return f"Alonwa(Service+) {d()} Region: {self.region} {d()} Nom: {self.name}"
+
+    def __str__(self):
+        if self.is_default:
+            default_text = "(par défaut)"
+        else:
+            default_text = ''
+        return f"Region={self.region}, nom={self.name}, ID={self.account_id} {default_text}"
+
+
+class CGAAccount:
+    def __init__(
+            self,
+            name: str,
+            password: str,
+            region: str,
+            account_id: str,
+            is_default: bool = False
+    ):
+        self.account_id = account_id
+        self.region = region
+        self.name = name
+        self.password = password
+        self.is_default = is_default
+
+    @property
+    def to_dict(self):
+        return {
+            'account_id': self.account_id,
+            'region': self.region,
+            'name': self.name,
+            'password': self.password,
+            'is_default': self.is_default
+        }
+
+    @property
+    def desc_str(self):
+        return f"CGA {d()} Region: {self.region} {d()} Nom: {self.name}"
+
+    def __str__(self):
+        if self.is_default:
+            default_text = "(par défaut)"
+        else:
+            default_text = ''
+
+        return f"Region={self.region} Nom={self.name} ID={self.account_id} {default_text}"
+
+
+def dict_to_alonwa_account(data: dict[str, str], is_default: bool = False):
+    return AlonwaAccount(
+        account_id=data['account_id'],
+        region=data['region'],
+        name=data['name'],
+        password=data['password'],
+        is_default=is_default
+    )
+
+
+def dict_to_cga_account(data: dict[str, str], is_default: bool = False):
+    return CGAAccount(
+        account_id=data['account_id'],
+        name=data['name'],
+        password=data['password'],
+        region=data['region'],
+        is_default=is_default
+    )
+
+
+def save_alonwa_account_to_db(account: AlonwaAccount):
+    println('Enregistrement du compte ALONWA', Status.LOADING)
+    data = {}
+    try:
+        with open(PATH_FILE_ACCOUNT, 'r') as file:
+            # We update account
+            data = json.load(file)
+            data['alonwa'][account.account_id] = account.to_dict
+    except Exception as e:
+        try:
+            data['alonwa'][account.account_id] = account.to_dict
+        except Exception as ex:
+            data['alonwa'] = {account.account_id: account.to_dict}
+        # data['alonwa'] += {account.account_id: account.to_dict}
+
+    with open(PATH_FILE_ACCOUNT, 'w') as file:
+        json.dump(data, file)
+    println('Enregistrement Terminer', Status.SUCCESS)
+
+
+def save_cga_account_to_db(account: CGAAccount):
+    println('Enregistrement du compte CGA', Status.LOADING)
+    data = {}
+    try:
+        with open(PATH_FILE_ACCOUNT, 'r') as file:
+            # We update account
+            data = json.load(file)
+            data['cga'][account.account_id] = account.to_dict
+    except Exception as e:
+        try:
+            data['cga'][account.account_id] = account.to_dict
+        except Exception as ex:
+            data['cga'] = {account.account_id: account.to_dict}
+
+    with open(PATH_FILE_ACCOUNT, 'w') as w_file:
+        json.dump(data, w_file)
+    println('Enregistrement Terminer', Status.SUCCESS)
+
+
+def delete_alonwa_account_from_db(account_id: str):
+    println('Suppression du compte ALONWA', Status.LOADING)
+    with open(PATH_FILE_ACCOUNT, 'r') as file:
+        # We update account
+        data = json.load(file)
+        data['alonwa'].pop(account_id)
+        if data['alonwa_default'] == account_id:
+            data['alonwa_default'] = ''
+
+    with open(PATH_FILE_ACCOUNT, 'w') as w_file:
+        json.dump(data, w_file)
+
+    println('Suppression Terminé', Status.SUCCESS)
+
+
+def delete_cga_account_from_db(account_id: str):
+    println('Suppression du compte CGA', Status.LOADING)
+    with open(PATH_FILE_ACCOUNT, 'r') as file:
+        # We update account
+        data = json.load(file)
+        data['cga'].pop(account_id)
+        if data['cga_default'] == account_id:
+            data['cga_default'] = ''
+
+    with open(PATH_FILE_ACCOUNT, 'w') as w_file:
+        json.dump(data, w_file)
+
+    println('Suppression Terminé', Status.SUCCESS)
+
+
+def set_default_alonwa_account(account_id: str):
+    println("Prioritisation d()'un compte ALONWA", Status.LOADING)
+    with open(PATH_FILE_ACCOUNT, 'r') as file:
+        # We update account
+        data = json.load(file)
+        data['alonwa_default'] = account_id
+
+    with open(PATH_FILE_ACCOUNT, 'w') as w_file:
+        json.dump(data, w_file)
+
+    println('Prioritisation Terminé', Status.SUCCESS)
+
+
+def set_default_cga_account(account_id: str):
+    println("Prioritisation d()'un compte CGA", Status.LOADING)
+    with open(PATH_FILE_ACCOUNT, 'r') as file:
+        # We update account
+        data = json.load(file)
+        data['cga_default'] = account_id
+
+    with open(PATH_FILE_ACCOUNT, 'w') as w_file:
+        json.dump(data, w_file)
+
+    println('Prioritisation  Terminé', Status.SUCCESS)
+
+
+def get_default_alonwa_account_id():
+    # println('Recherche du compte ALONWA par defaut', Status.LOADING)
+    try:
+        with open(PATH_FILE_ACCOUNT, 'r') as file:
+            # We update account
+            data = json.load(file)
+            default = data['alonwa_default']
+            account = dict_to_alonwa_account(data['alonwa'][default], True)
+            println(f'Compte ALONWA par défaut: {account.desc_str}', Status.SUCCESS)
+    except Exception as e:
+        default = ''
+        println('Compte ALONWA par défaut introuvable. Veuillez définir un', Status.FAILED)
+    return default
+
+
+def get_default_cga_account_id():
+    # println('Recherche du compte CGA par défaut', Status.LOADING)
+    try:
+        with open(PATH_FILE_ACCOUNT, 'r') as file:
+            # We update account
+            data = json.load(file)
+            default = data['cga_default']
+            account = dict_to_cga_account(data['cga'][default], True)
+            println(f'Compte CGA par défaut: {account.desc_str}', Status.SUCCESS)
+    except Exception as e:
+        default = ''
+        println('Compte CGA par défaut introuvable. Veuillez définir un', Status.FAILED)
+    return default
+
+
+def get_alonwa_accounts_from_db():
+    # println('Récuperation des comptes ALONWA', Status.LOADING)
+    accounts = []
+    try:
+        with open(PATH_FILE_ACCOUNT, 'r') as file:
+            # We update account
+            data = json.load(file)
+            try:
+                alonwa_default = data['alonwa_default']
+            except Exception as e:
+
+                alonwa_default = ''
+            accounts = [dict_to_alonwa_account(data['alonwa'][account_id], alonwa_default == account_id) for account_id
+                        in data['alonwa']]
+    except Exception as e:
+        pass
+
+    if len(accounts) == 0:
+        println('Aucun comptes ALONWA trouvé. Veuillez en ajouter.', Status.FAILED)
+    else:
+        println(f'Comptes ALONWA trouvé: {len(accounts)}', Status.SUCCESS)
+    return accounts
+
+
+def get_cga_accounts_from_db():
+    # println('Récuperation des comptes CGA', Status.LOADING)
+    accounts = []
+    try:
+        with open(PATH_FILE_ACCOUNT, 'r') as file:
+            # We update account
+            data = json.load(file)
+            try:
+                cga_default = data['cga_default']
+            except Exception as e:
+
+                cga_default = ''
+            accounts = [dict_to_cga_account(data['cga'][account_id], cga_default == account_id) for account_id in
+                        data['cga']]
+    except Exception as e:
+        pass
+    if len(accounts) == 0:
+        println('Aucun comptes CGA trouvé. Veuillez en ajouter.', Status.FAILED)
+    else:
+        println(f'Comptes CGA trouvé: {len(accounts)}', Status.SUCCESS)
+    return accounts
+
+
+def get_default_alonwa_account():
+    with open(PATH_FILE_ACCOUNT, 'r') as f:
+        data = json.load(f)
+        alonwa_default = data['alonwa_default']
+        return dict_to_alonwa_account(data['alonwa'][alonwa_default], True)
+
+
+def get_default_cga_account():
+    with open(PATH_FILE_ACCOUNT, 'r') as f:
+        data = json.load(f)
+        cga_default = data['cga_default']
+        return dict_to_cga_account(data['cga'][cga_default], True)
+
+# delete_alonwa_account_from_db('d03495d4-8146-4b4b-9361-866e079e8d76')
+# get_alonwa_accounts_from_db()
+# print(save_alonwa_account_to_db(AlonwaAccount("Centre", "TAKIAMPI", "JOES")))
