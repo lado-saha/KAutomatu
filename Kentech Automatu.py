@@ -44,7 +44,7 @@ def ask_month_interval(d_uis: DataUiState):
 
 def ask_num_process(d_uis: DataUiState):
     println(
-        "Modifier le temps necessaire pour crasher(en seconde). N'entrer rien si vous voulez les parametres par défauts")
+        "Modifier le nombre de clotures ou personne ou entite a traiter.")
     try:
         d_uis.num_to_process = int(input("\t> Nombre max de clotures(par défaut = INFINI): "))
     except Exception as e:
@@ -53,10 +53,7 @@ def ask_num_process(d_uis: DataUiState):
 
 def main():
     a = False
-
     d_uis = DataUiState()
-
-    init_app()
 
     println(f"{'Kentech Automatu':.^100}", Status.HEADING)
     println(f"{'Version Demo':.^100}", Status.NEGATIVE_ATTENTION)

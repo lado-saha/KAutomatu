@@ -84,7 +84,9 @@ PATH_BASE_PRESTATION_STATE = PATH_BASE + '\\Rapports\\Etat des prestations'
 def init_app() -> bool:
     init()
     x = mac_matters()
-    # mac_matters()
+    if not x:
+        return False
+
     documents_folder = os.path.expanduser('~/Documents')
     base_folder = os.path.join(documents_folder, 'Kentech AUTOMATU')
     if not os.path.exists(base_folder):
@@ -98,7 +100,7 @@ def init_app() -> bool:
         os.makedirs(os.path.join(rapport_folder, 'Clotures des à qualifiers'))
         os.makedirs(os.path.join(rapport_folder, 'Données des abonnes'))
         os.makedirs(os.path.join(rapport_folder, 'Etat des prestations'))
-    return x
+    return True
 
 
 def re_init_app():
@@ -537,51 +539,71 @@ def can_write_files():
 
 
 def mac_matters() -> bool:
-    is_permitted = can_write_files()
+    # is_permitted = can_write_files()
 
     from cryptography.fernet import Fernet
     # mac_address = os.popen(
     #     'ipconfig /all | findstr "Physical Address"').read().strip().split('\n')[0].split(': ')[-1]
+    folder_path = os.path.join(os.environ['APPDATA'], 'MSCore')
+    anti_tamper = os.path.join(folder_path, 'init_1')
+    start_date = os.path.join(folder_path, 'init_2')
+    key = os.path.join(folder_path, 'init_3')
 
-    secret_path = os.path.join(os.environ['APPDATA'], 'b12cp-0')
-    secret = os.path.join(secret_path, 'cral243')
+    old_anti_tamper_path = os.path.join(os.environ['APPDATA'], 'b12cp-0')
+    old_key_path = os.path.join(os.environ['APPDATA'], 'cb09k-0')
+    # old_anti_tamper = os.path.join(old_anti_tamper_path, 'cral243')
+    # old_key = os.path.join(old_key_path, 'jk0l')
 
-    key_path = os.path.join(os.environ['APPDATA'], 'cb09k-0')
-    key = os.path.join(key_path, 'jk0l')
+    # The case when the software is newly launched
+    if os.path.exists(old_anti_tamper_path) and os.path.exists(old_key_path):
+        # we delete the old authentication system
+        shutil.rmtree(old_anti_tamper_path)
+        shutil.rmtree(old_key_path)
+        os.makedirs(folder_path)
+        subprocess.run(['attrib', '+h', folder_path])
+        # subprocess.run(['attrib', '+h', key_path])
+        with open(anti_tamper, 'wb') as f_tamper, open(start_date, 'wb') as f_start_time, open(key, 'wb') as f_key:
+            key = Fernet.generate_key()
+            crypter = Fernet(key)
+            f_key.write(key)
+            f_start_time.write(crypter.encrypt(f"{time.time()}".encode()))
+            f_tamper.write(crypter.encrypt(f"{time.time()}".encode()))
+        # We are trying to save the initial configuration files for the first initialisation. Our objective is to use
+        # this to further confirm the 30 days expiration system and resist - Calendar modification
+        return True
 
-    if not (os.path.exists(secret) and os.path.exists(key)) and is_permitted:
-        k = Fernet.generate_key()
-        crypter = Fernet(k)
-        os.makedirs(secret_path)
-        os.makedirs(key_path)
-        subprocess.run(['attrib', '+h', secret_path])
-        subprocess.run(['attrib', '+h', key_path])
-
-        enc_data = crypter.encrypt(f"{time.time()}".encode())
-
-        with open(secret, 'wb') as f_secret, open(key, 'wb') as f_key:
-            f_secret.write(enc_data)
-            f_key.write(k)
-
-    try:
-        with open(secret, 'rb') as f_secret, open(key, 'rb') as f_key:
+    if os.path.exists(start_date) and os.path.exists(anti_tamper) and os.path.exists(key):
+        with open(start_date, 'rb') as f_start_time, open(anti_tamper, 'rb') as f_tamper, open(key, 'rb') as f_key:
             crypter = Fernet(f_key.read())
-            dec_data = crypter.decrypt(f_secret.read()).decode().strip()
-            left = 30 - int((time.time() - float(dec_data)) / (3600 * 24))
-            if left <= 0:
-                println(
-                    "Votre abonnement a expire. Veuillez nous contacter (Kentech) pour obtenir la version Complete.",
-                    Status.FAILED)
+            starting_time = crypter.decrypt(f_start_time.read()).decode().strip()
+            last_time_opened = crypter.decrypt(f_tamper.read()).decode().strip()
+            # This checks if the current date is greater than the last opening date.
+            # useful to know if the user hasn't changed clock
+            is_date_tampered = (time.time() - float(last_time_opened)) < 0
+
+            if is_date_tampered:
+                println("Date invalide!!!. Impossible to confirmer votre licence. Avez vous modifier votre calendrier?",
+                        Status.FAILED)
                 println("Tel: 691940977", Status.NEGATIVE_ATTENTION)
                 println("Email: ladokihosaha@gmail.com", Status.NEGATIVE_ATTENTION)
                 return False
-            else:
-                print(left)
-                return True
-    except Exception as e:
-        print(e)
+        is_expired = (14 - int((time.time() - float(starting_time)) / (3600 * 24))) <= 0
+        if not is_expired:
+            # In case nothing is expired we save the last open date in order to resist the tampering
+            with open(anti_tamper, 'wb') as f_tamper_w, open(key, 'rb') as f_key:
+                crypter = Fernet(f_key.read())
+                f_tamper_w.write(crypter.encrypt(f"{time.time()}".encode()))
+            return True
+        else:
+            println(
+                "Votre abonnement a expire. Veuillez nous contacter (Kentech) pour obtenir la version Complete.",
+                Status.FAILED)
+            println("Tel: 691940977", Status.NEGATIVE_ATTENTION)
+            println("Email: ladokihosaha@gmail.com", Status.NEGATIVE_ATTENTION)
+            return False
+    else:
         println(
-            "Votre abonnement se limite a une seul machine. Pour augmenter le nombre de postes, veuillez nous contacter pour la version complete",
+            "Votre licence se limite a une seul machine. Pour augmenter le nombre de postes, veuillez nous contacter.",
             Status.FAILED)
         println("Tel: 691940977", Status.NEGATIVE_ATTENTION)
         println("Email: ladokihosaha@gmail.com", Status.NEGATIVE_ATTENTION)
