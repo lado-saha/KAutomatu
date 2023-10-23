@@ -183,7 +183,8 @@ def main():
                         a_password_confirm = get_password("\t> Confirmer le mot de passe: ")
                         if a_password == a_password_confirm:
                             save_alonwa_account_to_db(
-                                AlonwaAccount(region=a_region, name=a_name, password=a_password,account_id=accounts[a_number - 1].account_id))
+                                AlonwaAccount(region=a_region, name=a_name, password=a_password,
+                                              account_id=accounts[a_number - 1].account_id))
                             break
                         else:
                             println('Les mots de passe doivent etre identiques', Status.FAILED)
@@ -322,6 +323,7 @@ def main():
             continue
 
         if opt == 3:
+
             if default_alonwa == '':
                 println("Aucun compte alonwa par défaut trouver.", Status.FAILED)
                 continue
@@ -355,7 +357,8 @@ def main():
                 # edge_options_1.add_argument('--headless')
                 # edge_options_1.add_experimental_option("detach", True)
                 edge_options_1.add_experimental_option('excludeSwitches', ['enable-logging'])
-                alonwa_driver = webdriver.Edge(options=edge_options_1, service = service.Service(executable_path="C:\\Users\\FAMILLE\\Desktop\\msedgedriver.exe"))
+                alonwa_driver = webdriver.Edge(options=edge_options_1, service=service.Service(
+                    executable_path="E:\\msedgedriver.exe"))
                 alonwa_wait = WebDriverWait(alonwa_driver, d_uis.timeout)
                 a = login_to_alonwa(alonwa_driver, alonwa_wait, get_default_alonwa_account(), uis)
                 if a:
@@ -363,7 +366,8 @@ def main():
                     # edge_options_2.add_argument('--headless')
                     # edge_options_2.add_experimental_option("detach", True)
                     edge_options_2.add_experimental_option('excludeSwitches', ['enable-logging'])
-                    cga_driver = webdriver.Edge(options=edge_options_2, service = service.Service(executable_path="C:\\Users\\FAMILLE\\Desktop\\msedgedriver.exe"))
+                    cga_driver = webdriver.Edge(options=edge_options_2, service=service.Service(
+                        executable_path="E:\\msedgedriver.exe"))
                     cga_wait = WebDriverWait(cga_driver, d_uis.timeout)
                     b = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
                     if b:
@@ -632,3 +636,6 @@ def main():
 
 if init_app():
     main()
+else:
+    print("")
+    input()

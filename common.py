@@ -83,9 +83,9 @@ PATH_BASE_PRESTATION_STATE = PATH_BASE + '\\Rapports\\Etat des prestations'
 
 def init_app() -> bool:
     init()
-    x = mac_matters()
-    if not x:
-        return False
+    # x = mac_matters()
+    # if not x:
+    #     return False
 
     documents_folder = os.path.expanduser('~/Documents')
     base_folder = os.path.join(documents_folder, 'Kentech AUTOMATU')
@@ -251,7 +251,7 @@ def gen_prestation_data_report(prestations: list[Prestation]):
     Generé le {now.strftime('%Y-%m-%d() %H:%M:%S')}{d()}{d()}
     Titre: Etats des Prestations{d()}{d()}
     {get_default_cga_account().desc_str}
-    
+
     Num Decodeur{d()} Num Abonne{d()} Etat, Reference{d()} CGA Antenist"""
     if len(prestations) == 0:
         report += "\nUne erreur c'est produite"
@@ -277,7 +277,7 @@ def gen_subscriber_data_report(subscribers: list[Subscriber], query_field: SubQu
     Titre: Donnees des Abonnes{d()}{d()}
     Recharcher par: {query_field}{d()}{d()}
     {get_default_cga_account().desc_str}
-    
+
     Num Decodeur{d()} Num Abonne{d()} Numero de telephone{d()} Nom d()'abonne{d()} Formule{d()} Debut{d()} Fin{d()} Etat"""
     if len(subscribers) == 0:
         report += "\nUne erreur c'est produite"
@@ -301,7 +301,7 @@ def gen_subscriber_data_report_phone(subscribers: list[Subscriber]):
     Generé le {now.strftime('%Y-%m-%d() %H:%M:%S')}{d()}
     Titre: Numéros de téléphone des abonnés{d()}
     {get_default_alonwa_account().desc_str}
-    
+
     Num Abonne{d()} Numéro de téléphone{d()}"""
     if len(subscribers) == 0:
         report += "\nUne erreur c'est produite"
@@ -327,7 +327,7 @@ def gen_temp_termination_report(month: int, subscribers: list[Subscriber]):
     Mois: {month}
     {get_default_cga_account().desc_str}
     {get_default_alonwa_account().desc_str}
-    
+
     Num Decodeur{d()} Num Abonne{d()} Nom Abonne{d()} Formule{d()} Etat{d()} ID du tech"""
 
     if len(subscribers) == 0:
@@ -353,7 +353,7 @@ def gen_qualifier_termination_report(subscribers: list[Subscriber]):
     Titre: Clotures des 'A qualifiers'
     {get_default_cga_account().desc_str}
     {get_default_alonwa_account().desc_str}
-    
+
     Num Decodeur{d()} Num Abonne{d()} Nom Abonne{d()} Formule{d()} Etat{d()} ID du tech"""
     if len(subscribers) == 0:
         report += "\nUne erreur c'est produite"

@@ -230,9 +230,11 @@ def terminate_to_qualify_from_cga(driver: webdriver.Edge, wait: WebDriverWait, u
 """
 
 
-def get_all_subscriber_data_from(driver: webdriver.Edge, uis: NavigationUiState, wait: WebDriverWait,
-                                 all_subscribers: list[Subscriber], queries: list[str],
-                                 query_field: SubQueryField) -> bool:
+def get_all_subscriber_data_from(
+        driver: webdriver.Edge, uis: NavigationUiState, wait: WebDriverWait,
+        all_subscribers: list[Subscriber], queries: list[str],
+        query_field: SubQueryField
+) -> bool:
     launch_cga_prospect(driver, wait, uis)
     n = len(queries)
     i = 0
@@ -271,6 +273,8 @@ def get_all_subscriber_data_from(driver: webdriver.Edge, uis: NavigationUiState,
             )
             rows = table.find_elements(By.TAG_NAME, "tr")[1:]
             rows_cells = [row.find_elements(By.TAG_NAME, "td") for row in rows]
+            print(rows_cells)
+            # What we will do instead is to rewrite it to click each link get the dates before getting the next row
 
             for j in range(0, len(rows_cells)):
                 temp_sub = Subscriber(
@@ -319,11 +323,13 @@ def get_all_subscriber_data_from(driver: webdriver.Edge, uis: NavigationUiState,
                     f"{i}/{n}: ({len(subscribers)}) trouve pour {query}", Status.SUCCESS)
                 k += 1
         except Exception as e:
+            print(e)
             try:
                 alert = driver.switch_to.alert
                 alert.accept()
             except Exception as ex:
                 pass
+
             all_subscribers.append(fail_sub)
             uis.error = f'{query} not found'
             println(f"{i}/{n}: aucun trouve pour {query}", Status.FAILED)
