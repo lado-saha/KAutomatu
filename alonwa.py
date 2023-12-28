@@ -135,7 +135,7 @@ def terminate_temp_in_alonwa(
     table = wait.until(ec.visibility_of_element_located(
         (By.ID, 'tbl_inter_pending')))
 
-    # All the rows of intervention data except the 2 first rows which are just meta data
+    # All the rows of intervention data except the 2 first rows which are just metadata
     all_rows = table.find_elements(By.TAG_NAME, "tr")[2:]
     # A matrix of cells for each row
     all_rows_cells = [row.find_elements(By.TAG_NAME, "td") for row in all_rows]
@@ -176,6 +176,7 @@ def terminate_temp_in_alonwa(
         wait.until_not(ec.visibility_of_element_located(
             (By.ID, 'dialog_loader'))
         )
+
         for k in range(month, current_month):
             btn_prev = driver.find_element(By.CLASS_NAME, 'fc-button-prev')
             btn_prev.click()
@@ -260,7 +261,7 @@ def terminate_qualify_from_alonwa(driver: webdriver.Edge, wait: WebDriverWait, u
     table = wait.until(ec.visibility_of_element_located(
         (By.ID, 'tbl_inter_pending')))
 
-    # All the rows of intervention data except the 2 first rows which are just meta data
+    # All the rows of intervention data except the 2 first rows which are just metadata
     # we get the reference ids
     all_rows = table.find_elements(By.TAG_NAME, "tr")[2:]
     # A matrix of cells for each row

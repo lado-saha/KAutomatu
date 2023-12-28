@@ -52,7 +52,6 @@ def ask_num_process(d_uis: DataUiState):
 
 
 def main():
-    a = False
     d_uis = DataUiState()
 
     println(f"{'Kentech Automatu':.^100}", Status.HEADING)
@@ -74,6 +73,9 @@ def main():
     opt = ''
 
     while True:
+        is_cga_ok = False
+        is_alonwa_ok = False
+
         uis = NavigationUiState()
         alonwa_driver = None
         cga_driver = None
@@ -354,31 +356,26 @@ def main():
             subscribers: list[Subscriber] = []
             try:
                 edge_options_1 = webdriver.EdgeOptions()
-                # edge_options_1.add_argument('--headless')
-                # edge_options_1.add_experimental_option("detach", True)
                 edge_options_1.add_experimental_option('excludeSwitches', ['enable-logging'])
-                alonwa_driver = webdriver.Edge(options=edge_options_1, service=service.Service(
-                    executable_path="E:\\msedgedriver.exe"))
+                alonwa_driver = webdriver.Edge(options=edge_options_1)
                 alonwa_wait = WebDriverWait(alonwa_driver, d_uis.timeout)
-                a = login_to_alonwa(alonwa_driver, alonwa_wait, get_default_alonwa_account(), uis)
-                if a:
+                is_cga_ok = login_to_alonwa(alonwa_driver, alonwa_wait, get_default_alonwa_account(), uis)
+                if is_cga_ok:
                     edge_options_2 = webdriver.EdgeOptions()
-                    # edge_options_2.add_argument('--headless')
-                    # edge_options_2.add_experimental_option("detach", True)
                     edge_options_2.add_experimental_option('excludeSwitches', ['enable-logging'])
-                    cga_driver = webdriver.Edge(options=edge_options_2, service=service.Service(
-                        executable_path="E:\\msedgedriver.exe"))
+                    cga_driver = webdriver.Edge(options=edge_options_2)
                     cga_wait = WebDriverWait(cga_driver, d_uis.timeout)
-                    b = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
-                    if b:
+                    is_alonwa_ok = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
+                    if is_alonwa_ok:
                         terminate_temp_in_alonwa(alonwa_driver, alonwa_wait, month, uis, subscribers, cga_driver,
                                                  cga_wait, d_uis.num_to_process)
             except Exception as e:
                 print(e)
                 println("Verifier votre connexion internet", Status.FAILED)
             gen_temp_termination_report(month, subscribers)
-            alonwa_driver.quit()
-            if a:
+            if is_alonwa_ok:
+                alonwa_driver.quit()
+            if is_cga_ok:
                 cga_driver.quit()
             println(f"{'Fin':-^50}")
 
@@ -411,21 +408,17 @@ def main():
 
             try:
                 edge_options_1 = webdriver.EdgeOptions()
-                # edge_options_1.add_argument('--headless')
-                # edge_options_1.add_experimental_option("detach", True)
                 edge_options_1.add_experimental_option('excludeSwitches', ['enable-logging'])
                 alonwa_driver = webdriver.Edge(options=edge_options_1)
                 alonwa_wait = WebDriverWait(alonwa_driver, d_uis.timeout)
-                a = login_to_alonwa(alonwa_driver, alonwa_wait, get_default_alonwa_account(), uis)
-                if a:
+                is_alonwa_ok = login_to_alonwa(alonwa_driver, alonwa_wait, get_default_alonwa_account(), uis)
+                if is_alonwa_ok:
                     edge_options_2 = webdriver.EdgeOptions()
-                    # edge_options_2.add_argument('--headless')
-                    # edge_options_2.add_experimental_option("detach", True)
                     edge_options_2.add_experimental_option('excludeSwitches', ['enable-logging'])
                     cga_driver = webdriver.Edge(options=edge_options_2)
                     cga_wait = WebDriverWait(cga_driver, d_uis.timeout)
-                    b = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
-                    if b:
+                    is_cga_ok = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
+                    if is_cga_ok:
                         terminate_qualify_from_alonwa(alonwa_driver, alonwa_wait, uis, subscribers, cga_driver,
                                                       cga_wait, get_tech_ids(), d_uis.num_to_process)
 
@@ -433,9 +426,10 @@ def main():
                 println("Verifier votre connexion internet", Status.FAILED)
                 print(e)
             gen_qualifier_termination_report(subscribers)
-            if a:
+            if is_cga_ok:
                 cga_driver.quit()
-            alonwa_driver.quit()
+            if is_alonwa_ok:
+                alonwa_driver.quit()
             println(f"{'Fin':-^50}")
 
         elif opt == 5:
@@ -482,18 +476,18 @@ def main():
             println(f"{'Debut':-^50}\n")
             try:
                 edge_options_1 = webdriver.EdgeOptions()
-                # edge_options_1.add_argument('--headless')
-                # edge_options_1.add_experimental_option("detach", True)
                 edge_options_1.add_experimental_option('excludeSwitches', ['enable-logging'])
-                cga_driver = webdriver.Edge(options=edge_options_1, )
+                cga_driver = webdriver.Edge(options=edge_options_1)
                 cga_wait = WebDriverWait(cga_driver, d_uis.timeout)
-                b = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
-                if b:
+                is_cga_ok = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
+                if is_cga_ok:
                     get_all_subscriber_data_from(cga_driver, uis, cga_wait, subscribers, subscriber_query, query_field)
             except Exception as e:
+                print(e)
                 println("Verifier votre connexion internet", Status.FAILED)
             m = gen_subscriber_data_report(subscribers, query_field)
-            cga_driver.quit()
+            if is_cga_ok:
+                cga_driver.quit()
             println(f"{'Fin':-^50}")
 
         elif opt == 6:
@@ -502,7 +496,8 @@ def main():
                 continue
             println(f"{'Instructions':-^50}")
             println(
-                "Vous etes sur le point d'obtenir les etats des prestations(installation canal+) grace au numeros de decodeurs")
+                "Vous etes sur le point d'obtenir les etats des prestations(installation canal+) grace au numeros de "
+                "decodeurs")
             println("Utiliser le click droit pour coller, ensuite sur Entrer puis Ctrl+Z sur Windows pour enregistrer",
                     Status.HEADING)
             println("Coller la liste des numeros de decodeurs. Chaque numero doit etre sur ca ligne ....")
@@ -514,19 +509,18 @@ def main():
 
             try:
                 edge_options_2 = webdriver.EdgeOptions()
-                # edge_options_1.add_argument('--headless')
-                # edge_options_1.add_experimental_option("detach", True)
                 edge_options_2.add_experimental_option('excludeSwitches', ['enable-logging'])
                 cga_driver = webdriver.Edge(options=edge_options_2)
                 cga_wait = WebDriverWait(cga_driver, d_uis.timeout)
-                b = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
-                if b:
+                is_cga_ok = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
+                if is_cga_ok:
                     cga_get_state_of_prestation_from_decoders(cga_driver, cga_wait, uis, decoders, prestations)
             except Exception as e:
                 println("Verifier votre connexion internet", Status.FAILED)
                 print(e)
             m = gen_prestation_data_report(prestations)
-            cga_driver.quit()
+            if is_cga_ok:
+                cga_driver.quit()
             println(f"{'Fin':-^50}")
 
         elif opt == 7:
@@ -551,13 +545,14 @@ def main():
                 edge_options_1.add_experimental_option('excludeSwitches', ['enable-logging'])
                 alonwa_driver = webdriver.Edge(options=edge_options_1)
                 alonwa_wait = WebDriverWait(alonwa_driver, d_uis.timeout)
-                a = login_to_alonwa(alonwa_driver, alonwa_wait, get_default_alonwa_account(), uis)
-                if a:
+                is_alonwa_ok = login_to_alonwa(alonwa_driver, alonwa_wait, get_default_alonwa_account(), uis)
+                if is_alonwa_ok:
                     get_subs_phones_from_subs_ids(alonwa_driver, alonwa_wait, uis, all_subs, sub_ids, d_uis)
             except Exception as e:
                 println("Verifier votre connexion internet", Status.FAILED)
             gen_subscriber_data_report_phone(all_subs)
-            alonwa_driver.quit()
+            if is_alonwa_ok:
+                alonwa_driver.quit()
             println(f"{'Fin':-^50}")
 
         elif opt == 8:

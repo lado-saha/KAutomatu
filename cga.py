@@ -273,68 +273,82 @@ def get_all_subscriber_data_from(
             )
             rows = table.find_elements(By.TAG_NAME, "tr")[1:]
             rows_cells = [row.find_elements(By.TAG_NAME, "td") for row in rows]
-            print(rows_cells)
-            # What we will do instead is to rewrite it to click each link get the dates before getting the next row
-
+            # WE can first save all the subscriber in a list before we continue
             for j in range(0, len(rows_cells)):
-                temp_sub = Subscriber(
+                if j != 0:
+                    table = wait.until(ec.visibility_of_element_located(
+                        (By.ID, 'subscriberDTABLE'))
+                    )
+                    rows = table.find_elements(By.TAG_NAME, "tr")[1:]
+                    rows_cells = [row.find_elements(By.TAG_NAME, "td") for row in rows]
+
+                subscriber = Subscriber(
                     sub_id=rows_cells[j][0].text,
                     name=rows_cells[j][2].text,
                     formula=rows_cells[j][8].text,
                     decoder_num=rows_cells[j][11].text,
-                    link=rows_cells[j][0].find_element(By.TAG_NAME, 'a')
                 )
-                if query_field == SubQueryField.PHONE:
-                    temp_sub.phone = query
-                subscribers.append(temp_sub)
 
-            for subscriber in subscribers:
-                # driver.switch_to.window(uis.page_cga_prospect)
-                subscriber.link.click()
+                if query_field == SubQueryField.PHONE:
+                    subscriber.phone = query
+
+                rows_cells[j][0].find_element(By.TAG_NAME, 'a').click()
                 driver.switch_to.window(uis.page_cga_home)
+
                 uis.frame_cga_main = wait.until(
                     ec.visibility_of_element_located((By.NAME, 'cgaweb')))
-                driver.execute_script(
-                    "javascript:executeLink('/cgaweb/modaddress.do?todo=','Automatu', 'Adresse',this); void(0);")
-                driver.switch_to.frame(uis.frame_cga_main)
 
+                # We get the address incase the query was the phone number
+                if query_field != SubQueryField.PHONE:
+                    driver.execute_script(
+                        "javascript:executeLink('/cgaweb/modaddress.do?todo=','Automatu', 'Adresse',this); void(0);")
+                    driver.switch_to.frame(uis.frame_cga_main)
+
+                    uis.frame_cga_title = wait.until(
+                        ec.visibility_of_element_located((By.NAME, 'titleFrame')))
+                    uis.frame_cga_info = wait.until(
+                        ec.visibility_of_element_located((By.NAME, '_right')))
+
+                    # Getting the phone number
+                    driver.switch_to.frame(uis.frame_cga_info)
+                    phone_table = driver.find_element(By.ID, 'tdmobile1')
+                    phone_cells = [cell for cell in phone_table.find_elements(By.TAG_NAME, 'input')]
+                    temp_phone_num = f"{phone_cells[1].get_attribute('value')}{phone_cells[2].get_attribute('value')}{phone_cells[3].get_attribute('value')}"
+                    print(temp_phone_num)
+                    subscriber.phone = temp_phone_num
+                    driver.switch_to.window(uis.page_alonwa_home)
+
+                driver.switch_to.frame(uis.frame_cga_main)
                 uis.frame_cga_title = wait.until(
                     ec.visibility_of_element_located((By.NAME, 'titleFrame')))
-                uis.frame_cga_info = wait.until(
-                    ec.visibility_of_element_located((By.NAME, '_right')))
 
-                # Getting the phone number
-                driver.switch_to.frame(uis.frame_cga_info)
-                phone_table = driver.find_element(By.ID, 'tdmobile1')
-                phone_cells = [cell for cell in phone_table.find_elements(By.TAG_NAME, 'input')]
-                temp_phone_num = f"{phone_cells[1].get_attribute('value')}{phone_cells[2].get_attribute('value')}{phone_cells[3].get_attribute('value')}"
-                print(temp_phone_num)
-                subscriber.phone = temp_phone_num
-
-                driver.switch_to.window(uis.page_alonwa_home)
-                driver.switch_to.frame(uis.frame_cga_main)
                 driver.switch_to.frame(uis.frame_cga_title)
                 period = wait.until(
                     ec.visibility_of_element_located((By.XPATH, '//div[@id="period"]/b')))
                 subscriber.date_period_str = period.text.strip()
-                temp_phone_num = ''
-                all_subscribers += subscribers
-                println(
-                    f"{i}/{n}: ({len(subscribers)}) trouve pour {query}", Status.SUCCESS)
-                k += 1
-        except Exception as e:
-            print(e)
+                subscribers.append(subscriber)
+                try:
+                    driver.switch_to.window(uis.page_cga_prospect)
+                except Exception as e:
+                    print(e)
+                    launch_cga_prospect(driver, wait, uis)
+                    driver.switch_to.window(uis.page_cga_prospect)
+
+            all_subscribers += subscribers
+            k += 1
+            println(f"{i}/{n}: {len(rows_cells)} Trouver pour {query}", Status.SUCCESS)
+
+        except Exception as exp1:
             try:
                 alert = driver.switch_to.alert
                 alert.accept()
+                uis.error = f'{query} not found'
+                println(f"{i}/{n}: aucun trouver pour {query}", Status.FAILED)
+                all_subscribers.append(fail_sub)
             except Exception as ex:
-                pass
-
-            all_subscribers.append(fail_sub)
-            uis.error = f'{query} not found'
-            println(f"{i}/{n}: aucun trouve pour {query}", Status.FAILED)
-
-    println(f"Terminer avec {k}/{n} trouver", Status.SUCCESS)
+                println(f"{i}/{n}: Unexpected error for {query}", Status.FAILED)
+                all_subscribers.append(fail_sub)
+    println(f"Terminer avec {k - 1}/{n} trouver", Status.SUCCESS)
     logout_from_cga(driver, wait, uis)
     return True
 
