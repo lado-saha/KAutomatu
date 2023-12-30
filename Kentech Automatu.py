@@ -1,4 +1,6 @@
 import sys
+from time import sleep
+
 from auth import *
 from cga import *
 from alonwa import *
@@ -12,9 +14,8 @@ from visual import title_printer
 
 
 def ask_timeout(d_uis: DataUiState):
-    println(
-        "Modifier le temps necessaire pour crasher(en seconde). N'entrer rien si vous voulez les parametres par "
-        "defaults")
+    println("Modifier le temps necessaire pour crasher(en seconde). N'entrer rien si vous voulez les parametres par "
+            "defaults")
     try:
         d_uis.timeout = int(input("\t> Timeout(par défaut = 30s): "))
         println(f"Timeout = {d_uis.timeout}s", Status.SUCCESS)
@@ -23,22 +24,43 @@ def ask_timeout(d_uis: DataUiState):
     print()
 
 
-def ask_month_interval(d_uis: DataUiState):
+def ask_init_date(d_uis: DataUiState):
     current_month = datetime.date.today().month
-    println(
-        "Definissez l'interval temporel (en mois) pour faire la recherche. L'intervalle est entre le mois que vous "
-        "allez choisir et le mois present, (inclusive). Ne mettez rien pour l'intervalle par default")
+    current_year = datetime.date.today().year
+    println("Entrez la date de debut sous la forme suivante: <mois>/<année>: exemple (4/2023)")
     try:
-        start = int(input(f"\t> Debut (par défaut ={current_month}): "))
-        if start > current_month:
-            println(
-                f"La fin doit etre inférieur ou égal au mois present({current_month}). L'interval par défaut à été pri",
-                Status.FAILED)
+        start = input(f"\t> Date de debut (par défaut = {current_month}/{current_year} ): ")
+        start = [a.strip() for a in start.split("/")]
+        if len(start) == 2:
+            month = int(start[0])
+            year = int(start[1])
+
+            if year < 2023 or (month < 1 or month > 12):
+                println(
+                    f"La date de debut est invalid. La date par défaut à été prise",
+                    Status.FAILED)
+                d_uis.month_start = current_month
+                d_uis.year_start = current_year
+                return
+
+            if year > current_year and month > current_month:
+                println(
+                    f"La date de debut ne dois pas etre superieur au present. La date par défaut à été prise",
+                    Status.FAILED)
+                d_uis.month_start = current_month
+                d_uis.year_start = current_year
+                return
+            d_uis.month_start = month
+            d_uis.year_start = year
+            println(f"Depuis le {d_uis.month_start}/{d_uis.year_start}", Status.SUCCESS)
         else:
-            d_uis.month_start = start
-            println(f"Interval: mois {d_uis.month_start} au mois {current_month}", Status.SUCCESS)
+            println("Entrée invalid. La date de debut par défaut a ete prise.", Status.FAILED)
+            d_uis.month_start = current_month
+            d_uis.year_start = current_year
     except Exception as e:
-        println("Entrée invalid. L'interval par défaut a ete pri.", Status.FAILED)
+        println("Entrée invalid. La date de debut par défaut a ete prise.", Status.FAILED)
+        d_uis.month_start = current_month
+        d_uis.year_start = current_year
     print()
 
 
@@ -47,6 +69,7 @@ def ask_num_process(d_uis: DataUiState):
         "Modifier le nombre de clotures ou personne ou entite a traiter.")
     try:
         d_uis.num_to_process = int(input("\t> Nombre max de clotures(par défaut = INFINI): "))
+        println(f"Nombre = {d_uis.num_to_process}", Status.SUCCESS)
     except Exception as e:
         println("Entrée invalid. La valeur par défaut qui est de 'INFINI' a ete prise", Status.FAILED)
 
@@ -333,50 +356,58 @@ def main():
                 println("Aucun compte cga par défaut trouver.", Status.FAILED)
                 continue
 
-            current_month = datetime.date.today().month
             println(f"{'Instructions':-^50}")
             println(
                 "Vous etes sur le point de cloturer toutes les interventions en etat 'Temporaires' du mois que vous "
                 "allez entrer  sur ALONWA grace au CGA.")
-            print(f"Entrez un mois entre 1 et {current_month}")
-            try:
-                print()
-                month = int(input("\t> Mois: "))
-                if month > current_month:
-                    println("Mois invalid. Par défaut, nous allons selectionner le mois present", Status.FAILED)
-            except Exception as e:
-                println("Mois invalid. Par défaut, nous allons selectionner le mois present", Status.FAILED)
-                month = current_month
+            ask_init_date(d_uis)
+            # print(f"Entrez un mois entre 1 et {current_month}")
+            # try:
+            #     print()
+            #     month = int(input("\t> Mois: "))
+            #     if month > current_month:
+            #         println("Mois invalid. Par défaut, nous allons selectionner le mois present", Status.FAILED)
+            # except Exception as e:
+            #     println("Mois invalid. Par défaut, nous allons selectionner le mois present", Status.FAILED)
+            #     month = current_month
+
             ask_timeout(d_uis)
             ask_num_process(d_uis)
             println(f"{'Debut':-^50}\n")
 
             # Debut
-
             subscribers: list[Subscriber] = []
             try:
                 edge_options_1 = webdriver.EdgeOptions()
                 edge_options_1.add_experimental_option('excludeSwitches', ['enable-logging'])
                 alonwa_driver = webdriver.Edge(options=edge_options_1)
                 alonwa_wait = WebDriverWait(alonwa_driver, d_uis.timeout)
-                is_cga_ok = login_to_alonwa(alonwa_driver, alonwa_wait, get_default_alonwa_account(), uis)
-                if is_cga_ok:
+                is_alonwa_ok = login_to_alonwa(alonwa_driver, alonwa_wait, get_default_alonwa_account(), uis)
+                if is_alonwa_ok:
                     edge_options_2 = webdriver.EdgeOptions()
                     edge_options_2.add_experimental_option('excludeSwitches', ['enable-logging'])
                     cga_driver = webdriver.Edge(options=edge_options_2)
                     cga_wait = WebDriverWait(cga_driver, d_uis.timeout)
-                    is_alonwa_ok = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
-                    if is_alonwa_ok:
-                        terminate_temp_in_alonwa(alonwa_driver, alonwa_wait, month, uis, subscribers, cga_driver,
-                                                 cga_wait, d_uis.num_to_process)
-            except Exception as e:
-                print(e)
+                    is_cga_ok = True#login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
+                    if is_cga_ok:
+                        try:
+                            terminate_temp_in_alonwa(alonwa_driver, alonwa_wait, d_uis, uis, subscribers, cga_driver,
+                                                     cga_wait, d_uis.num_to_process)
+                        except Exception as e:
+                            try:
+                                logout_from_cga(cga_driver, cga_wait, uis)
+                                login_to_alonwa(alonwa_driver, alonwa_wait, uis)
+                            except Exception as e:
+                                pass
+            except Exception as ex:
+                print(ex)
+                sleep(1000)
                 println("Verifier votre connexion internet", Status.FAILED)
-            gen_temp_termination_report(month, subscribers)
-            if is_alonwa_ok:
-                alonwa_driver.quit()
-            if is_cga_ok:
-                cga_driver.quit()
+            gen_temp_termination_report(d_uis.month_start, subscribers)
+            # if is_alonwa_ok:
+            #     alonwa_driver.quit()
+            # if is_cga_ok:
+            #     cga_driver.quit()
             println(f"{'Fin':-^50}")
 
         elif opt == 4:
@@ -401,6 +432,7 @@ def main():
                 save_tech_ids(tech_ids)
             else:
                 println("Techs ids trouvé", Status.SUCCESS)
+            ask_init_date(d_uis)
             ask_timeout(d_uis)
             ask_num_process(d_uis)
             println(f"{'Debut':-^50}\n")
@@ -420,7 +452,7 @@ def main():
                     is_cga_ok = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
                     if is_cga_ok:
                         terminate_qualify_from_alonwa(alonwa_driver, alonwa_wait, uis, subscribers, cga_driver,
-                                                      cga_wait, get_tech_ids(), d_uis.num_to_process)
+                                                      cga_wait, get_tech_ids(), d_uis.num_to_process, d_uis)
 
             except Exception as e:
                 println("Verifier votre connexion internet", Status.FAILED)
@@ -537,7 +569,7 @@ def main():
             text = sys.stdin.read().strip()
             sub_ids = text.split("\n")
             println("Liste temporairement enregistrer", Status.SUCCESS)
-            ask_month_interval(d_uis)
+            ask_init_date(d_uis)
             ask_timeout(d_uis)
             all_subs: list[Subscriber] = []
             try:

@@ -83,9 +83,9 @@ PATH_BASE_PRESTATION_STATE = PATH_BASE + '\\Rapports\\Etat des prestations'
 
 def init_app() -> bool:
     init()
-    x = mac_matters()
-    if not x:
-        return False
+    # x = mac_matters()
+    # if not x:
+    #     return False
 
     documents_folder = os.path.expanduser('~/Documents')
     base_folder = os.path.join(documents_folder, 'Kentech AUTOMATU')
@@ -545,11 +545,14 @@ def mac_matters() -> bool:
     # mac_address = os.popen(
     #     'ipconfig /all | findstr "Physical Address"').read().strip().split('\n')[0].split(': ')[-1]
     folder_path = os.path.join(os.environ['APPDATA'], 'MS1Core')
+
     anti_tamper = os.path.join(folder_path, 'init_1')
     start_date = os.path.join(folder_path, 'init_2')
     key = os.path.join(folder_path, 'init_3')
 
     old_anti_tamper_path = os.path.join(os.environ['APPDATA'], 'MSCore')
+    # old_anti_tamper_path_1 = os.path.join(os.environ['APPDATA'], 'MS1Core')
+
     # old_key_path = os.path.join(os.environ['APPDATA'], 'cb09k-0')
     # old_anti_tamper = os.path.join(old_anti_tamper_path, 'cral243')
     # old_key = os.path.join(old_key_path, 'jk0l')
@@ -559,6 +562,7 @@ def mac_matters() -> bool:
         # We delete the old authentication system
         try:
             shutil.rmtree(old_anti_tamper_path)
+            shutil.rmtree(old_anti_tamper_path_1)
         except Exception as e:
             # print("could not")
             pass
@@ -590,7 +594,7 @@ def mac_matters() -> bool:
                 println("Tel: 691940977", Status.NEGATIVE_ATTENTION)
                 println("Email: ladokihosaha@gmail.com", Status.NEGATIVE_ATTENTION)
                 return False
-        print((time.time() - float(starting_time)) / (3600 * 24))
+        # print((time.time() - float(starting_time)) / (36000 * 24))
 
         is_expired = (1 - ((time.time() - float(starting_time)) / (3600 * 24))) <= 0
         print(is_expired)
