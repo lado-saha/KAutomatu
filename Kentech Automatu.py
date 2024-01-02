@@ -78,7 +78,7 @@ def main():
     d_uis = DataUiState()
 
     println(f"{'Kentech Automatu':.^100}", Status.HEADING)
-    println(f"{'Version Demo':.^100}", Status.NEGATIVE_ATTENTION)
+    # println(f"{'Version Demo':.^100}", Status.NEGATIVE_ATTENTION)
     title_printer()
     println(f"{'By KENTECH SERVICE, 691940977' :.^100}", Status.HEADING)
     println("Bienvenu sur Kentech Automatu. Ce logiciel vous permettra de: ", Status.HEADING)
@@ -361,16 +361,6 @@ def main():
                 "Vous etes sur le point de cloturer toutes les interventions en etat 'Temporaires' du mois que vous "
                 "allez entrer  sur ALONWA grace au CGA.")
             ask_init_date(d_uis)
-            # print(f"Entrez un mois entre 1 et {current_month}")
-            # try:
-            #     print()
-            #     month = int(input("\t> Mois: "))
-            #     if month > current_month:
-            #         println("Mois invalid. Par défaut, nous allons selectionner le mois present", Status.FAILED)
-            # except Exception as e:
-            #     println("Mois invalid. Par défaut, nous allons selectionner le mois present", Status.FAILED)
-            #     month = current_month
-
             ask_timeout(d_uis)
             ask_num_process(d_uis)
             println(f"{'Debut':-^50}\n")
@@ -388,7 +378,7 @@ def main():
                     edge_options_2.add_experimental_option('excludeSwitches', ['enable-logging'])
                     cga_driver = webdriver.Edge(options=edge_options_2)
                     cga_wait = WebDriverWait(cga_driver, d_uis.timeout)
-                    is_cga_ok = True#login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
+                    is_cga_ok = login_to_cga(cga_driver, cga_wait, get_default_cga_account(), uis)
                     if is_cga_ok:
                         try:
                             terminate_temp_in_alonwa(alonwa_driver, alonwa_wait, d_uis, uis, subscribers, cga_driver,
@@ -404,10 +394,10 @@ def main():
                 sleep(1000)
                 println("Verifier votre connexion internet", Status.FAILED)
             gen_temp_termination_report(d_uis.month_start, subscribers)
-            # if is_alonwa_ok:
-            #     alonwa_driver.quit()
-            # if is_cga_ok:
-            #     cga_driver.quit()
+            if is_alonwa_ok:
+                alonwa_driver.quit()
+            if is_cga_ok:
+                cga_driver.quit()
             println(f"{'Fin':-^50}")
 
         elif opt == 4:
@@ -453,6 +443,7 @@ def main():
                     if is_cga_ok:
                         terminate_qualify_from_alonwa(alonwa_driver, alonwa_wait, uis, subscribers, cga_driver,
                                                       cga_wait, get_tech_ids(), d_uis.num_to_process, d_uis)
+
 
             except Exception as e:
                 println("Verifier votre connexion internet", Status.FAILED)

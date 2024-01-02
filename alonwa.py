@@ -145,13 +145,9 @@ def terminate_temp_in_alonwa(
 
     links = {}
     ic = 0
-    next_button = wait.until(ec.element_to_be_clickable((By.ID, "tbl_inter_pending_next")))
-    next_button_class = str(next_button.get_attribute("class")).split(" ")[-1]
-    # print(next_button_class)
+
     # We try to click on the next button which will load the next page of 100 intervention
-    while next_button_class != "ui-state-disabled":
-        print(next_button_class)
-        next_button.click()
+    while True:
         # Wait until the loading bar disappear and then Waiting till the table is fully loaded to select it
         wait.until_not(ec.visibility_of_element_located(
             (By.ID, 'tbl_inter_pending_processing')))
@@ -165,23 +161,16 @@ def terminate_temp_in_alonwa(
             if "=GET_PROFIL_VIEW&" in href:
                 ic += 1
                 links[href] = href
-                print(ic)
 
         next_button = wait.until(ec.element_to_be_clickable((By.ID, "tbl_inter_pending_next")))
         next_button_class = str(next_button.get_attribute("class")).split(" ")[-1]
+        if next_button_class == "ui-state-disabled":
+            break
+        next_button.click()
 
-    print(f"{len(links)} = all links from {ic}")
-
-    # links = {}
-    # Will contain filtered link objects such that there is no repetition. This is because many technicians can appear
-    # for link in all_links:
-    #     links[link] = link
     uis.page_alonwa_interventions = driver.current_window_handle
 
-    print(links.keys())
-
     # For each link, we click and get the tech id from profile then navigate to the planning of the technician
-
     i = 0
     num_tech = len(links.values())
     println(f"{num_tech}")
@@ -191,84 +180,90 @@ def terminate_temp_in_alonwa(
         num_tech = max_operations
     println(f"Nombre a traiter = {num_tech}", Status.SUCCESS)
 
-    for link in links.values():
-        i += 1
-        driver.execute_script(f"window.open('{link}')")
-        wait.until(ec.new_window_is_opened)
-        uis.page_alonwa_tech_profile = driver.window_handles[-1]
-        driver.switch_to.window(uis.page_alonwa_tech_profile)
-        tech_id = driver.find_element(By.ID, 'ID_TECH').text
-        tech_name = driver.find_element(By.ID, 'NOM').text
+    try:
+        for link in links.values():
+            i += 1
+            driver.execute_script(f"window.open('{link}')")
+            wait.until(ec.new_window_is_opened)
+            uis.page_alonwa_tech_profile = driver.window_handles[-1]
 
-        println(f"{i}/{num_tech}: [Nom = {tech_name}, Tech ID = {tech_id}]")
+            driver.switch_to.window(uis.page_alonwa_tech_profile)
+            tech_id = driver.find_element(By.ID, 'ID_TECH').text
+            tech_name = driver.find_element(By.ID, 'NOM').text
 
-        # Find and click on the see planning button for navigation then wait for the loading spinner to disapear
-        form = driver.find_elements(
-            By.XPATH, "//form[@action='https://serviceplus.canal-plus.com/index.php']")[-1]
-        form.submit()
-        wait.until_not(ec.visibility_of_element_located(
-            (By.ID, 'dialog_loader'))
-        )
+            println(f"{i}/{num_tech}: [Nom = {tech_name}, Tech ID = {tech_id}]")
 
-        back_count = 12 * (current_year - d_uis.year_start) + (current_month - d_uis.month_start)
-        println(f"This is the count {back_count}", Status.SUCCESS)
-        k = 0
-        while k <= back_count:
-            k += 1
+            # Find and click on the see planning button for navigation then wait for the loading spinner to disappear
+            form = driver.find_elements(
+                By.XPATH, "//form[@action='https://serviceplus.canal-plus.com/index.php']")[-1]
+            form.submit()
+            wait.until_not(ec.visibility_of_element_located(
+                (By.ID, 'dialog_loader'))
+            )
             uis.page_alonwa_tech_planning = driver.current_window_handle
-            # We get all temporary interventions
-            all_events = driver.find_elements(
-                By.XPATH, "//div[@class='fc-event fc-event-hori fc-event-start fc-event-end']")
-            print(f"Events = {len(all_events)}")
-            for event_count in range(0, len(all_events)):
+            back_count = 12 * (current_year - d_uis.year_start) + (current_month - d_uis.month_start)
+            # println(f"This is the count {back_count}", Status.SUCCESS)
 
-                driver.switch_to.window(uis.page_alonwa_tech_planning)
+            k = 0
+            while k <= back_count:
+                k += 1
+                # We get all temporary interventions
                 all_events = driver.find_elements(
                     By.XPATH, "//div[@class='fc-event fc-event-hori fc-event-start fc-event-end']")
-                event = all_events[event_count]
-                text = event.find_element(By.CLASS_NAME, 'fc-event-title').text
-                # For each incomplete event we get to the details page and copy the decoder number if it exists else we skip
-                if text.strip() == 'INTERVENTION':
+                temp_events = []
+
+                # We filter out non-temporary events
+                for event in all_events:
+                    text = event.find_element(By.CLASS_NAME, 'fc-event-title').text
+                    if text.strip() == 'INTERVENTION':
+                        temp_events += [event]
+
+                event_count = 0
+                for event in temp_events:
+                    event_count += 1
+                    print(f"\t\t{event_count}/{len(temp_events)} Temporary Event for {tech_name}")
+
                     event.click()
                     wait.until(ec.new_window_is_opened)
                     uis.page_alonwa_intervention_details = driver.window_handles[-1]
                     driver.switch_to.window(uis.page_alonwa_intervention_details)
-                    wait.until(ec.visibility_of_element_located(
-                        (By.ID, 'ui-id-11')))
+                    wait.until(ec.visibility_of_element_located((By.ID, 'ui-id-11')))
                     subscriber = Subscriber()
-                    print(subscriber)
+                    # print(subscriber)
                     try:
                         subscriber = Subscriber(
                             tech_id=tech_id,
-                            decoder_num=driver.find_element(By.ID, 'ref_decodeur0').get_attribute('value').strip(),
+                            decoder_num=driver.find_element(By.ID, 'ref_decodeur0').get_attribute('value').strip()
                         )
-                        status =True #terminate_temp_from_cga(cga_driver, cga_wait, uis, subscriber)
+                        # status = True
+                        status = terminate_temp_from_cga(cga_driver, cga_wait, uis, subscriber)
                         if status:
                             println(f"{subscriber.decoder_num}: cloturé", Status.SUCCESS)
                         else:
                             println(
-                                f"{subscriber.decoder_num}: non cloturé (valider, annuler ou inconnu)", Status.FAILED)
+                                f"{subscriber.decoder_num}: non cloturé (valider, annuler ou inconnu)",
+                                Status.FAILED)
                     except Exception as e:
-                        println(str(e), Status.FAILED)
                         println(f"Compte rendu incomplet, pas de numero decodeur", Status.FAILED)
+
                     all_subs.append(subscriber)
-                    # driver.close()
-                else:
-                    print("Pass")
+                    driver.close()
+                    driver.switch_to.window(uis.page_alonwa_tech_planning)
 
                 # We finally go the previous month and continue
-                btn_prev = driver.find_element(By.CLASS_NAME, 'fc-button-prev')
-                btn_prev.click()
-                wait.until_not(ec.visibility_of_element_located((By.ID, 'dialog_loader')))
+                if k < back_count:
+                    btn_prev = driver.find_element(By.CLASS_NAME, 'fc-button-prev')
+                    btn_prev.click()
+                    wait.until_not(ec.visibility_of_element_located((By.ID, 'dialog_loader')))
 
-        # Get all the events then only keep ones which are temporary only. A temporary event does not have a complete id
-        # E.g Complete is "INTERVENTION: 21478798218" while incomplete is "INTERVENTION"
+            # Get all the events then only keep ones which are temporary only. A temporary event does not have a complete id
+            # E.g. Complete is "INTERVENTION: 21478798218" while incomplete is "INTERVENTION"
+            driver.close()
+            driver.switch_to.window(uis.page_alonwa_interventions)
 
-        driver.close()
-        driver.switch_to.window(uis.page_alonwa_interventions)
-        # i += 1
-        # if i == num_tech:
-        #     break
+    except Exception as ex:
+        print(ex)
+        print("dfsadfdsa fsa dfdsafsadfsdafsadf")
     logout_from_alonwa(driver, wait, uis)
     logout_from_cga(cga_driver, cga_wait, uis)
     println(f"{num_tech} clotures depuis {d_uis.month_start}/{d_uis.year_start} terminés")
@@ -278,8 +273,6 @@ def terminate_temp_in_alonwa(
 """
     Termination of a to qualify
 """
-
-
 def terminate_qualify_from_alonwa(driver: webdriver.Edge, wait: WebDriverWait, uis: NavigationUiState,
                                   all_subs: list[Subscriber], cga_driver: webdriver.Edge, cga_wait: WebDriverWait,
                                   tech_ids: list[str], max: int | None, d_uis: DataUiState) -> bool:
@@ -296,7 +289,7 @@ def terminate_qualify_from_alonwa(driver: webdriver.Edge, wait: WebDriverWait, u
     to_qualify_menu_option = driver.find_element(By.ID, 'ui-id-4')
     to_qualify_menu_option.click()
 
-    x = set_start_date(driver, wait, d_uis.month_start, d_uis.year_start)
+    set_start_date(driver, wait, d_uis.month_start, d_uis.year_start)
 
     # Setting to show 100 intervention per page
     driver.find_element(
@@ -319,9 +312,6 @@ def terminate_qualify_from_alonwa(driver: webdriver.Edge, wait: WebDriverWait, u
 
     num_subs = len(subscriber_ids)
     println(f"Nombre total de Interventions = {num_subs}", Status.SUCCESS)
-
-    if not (max is None or max > num_subs):
-        num_subs = max
     println(f"Nombre a traiter = {num_subs}", Status.SUCCESS)
 
     k = 1
@@ -332,14 +322,18 @@ def terminate_qualify_from_alonwa(driver: webdriver.Edge, wait: WebDriverWait, u
             sub_id=subscriber_ids[i]
         )
         println(f"{i + 1}/{num_subs}: [Abonné = {subscriber.sub_id}]")
-        status = terminate_to_qualify_from_cga(
-            cga_driver, cga_wait, uis, subscriber, tech_ids)
-        if status:
-            k += 1
-            println(
-                f"Cloturer avec l'id = {subscriber.tech_id}", Status.SUCCESS)
-        else:
-            println(f"Aucun Id trouver pour cloturer", Status.FAILED)
+        try:
+            status = terminate_to_qualify_from_cga(
+                cga_driver, cga_wait, uis, subscriber, tech_ids)
+            if status:
+                k += 1
+                println(
+                    f"Cloturer avec l'id = {subscriber.tech_id}", Status.SUCCESS)
+            else:
+                println(f"Aucun Id trouver pour cloturer", Status.FAILED)
+        except Exception as ex:
+            println("Unknown Error", Status.FAILED)
+
         all_subs.append(subscriber)
 
     logout_from_alonwa(driver, wait, uis)
