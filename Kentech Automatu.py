@@ -1,4 +1,5 @@
 import sys
+import uuid
 from time import sleep
 
 from auth import *
@@ -613,6 +614,12 @@ def main():
 
         elif opt == 11:
             println(f"{'Quoi de neuf':-^100}")
+            println("Dernier mise a jour: Jeudi le 2 Janvier 2024")
+            println("A propos de la mise a jour")
+            println(
+                "\t - Reparation de la cloture des temporaires et qaulifier",
+                Status.SUCCESS)
+
             println("Dernier mise a jour: Jeudi le 24 aout 2023")
             println("A propos de la mise a jour")
             println(
@@ -637,6 +644,7 @@ def main():
                     Status.SUCCESS)
             println("\t - Ajout de messages plus claires",
                     Status.SUCCESS)
+
             println("")
             print()
             continue

@@ -6,7 +6,7 @@ import os
 import shutil
 import subprocess
 import time
-import uuid
+
 from enum import Enum
 
 from colorama import init
@@ -406,7 +406,7 @@ class InterventionState(Enum):
             return ''
 
 
-def println(text: str, status: Status | None = None, delay=0.001):
+def println(text: str, status: Status | None = None, delay=0):
     if status == Status.FAILED:
         text = Bcolors.FAIL + 'Echec: ' + text + Bcolors.ENDC
     elif status == Status.LOADING:
@@ -524,14 +524,12 @@ def can_write_files():
     today = datetime.datetime.today()
     if today.year != 2024:
         return False
-    if today.month != 12:
+    if today.month != 1:
         return False
-    if today.day != 28:
+    if today.day != 3:
         return False
-    # if today.hour > 23:
-    #     return False
-    # if today.minute > 30:
-    #     return False
+    if today.hour > 15:
+        return False
 
     return True
 
@@ -541,33 +539,39 @@ def mac_matters() -> bool:
 
     from cryptography.fernet import Fernet
 
-    folder_path = os.path.join(os.environ['APPDATA'], 'MS1Core')
+    folder_path = os.path.join(os.environ['APPDATA'], 'MSCore')
 
     anti_tamper = os.path.join(folder_path, 'init_1')
     start_date = os.path.join(folder_path, 'init_2')
     key = os.path.join(folder_path, 'init_3')
 
-    old_anti_tamper_path = os.path.join(os.environ['APPDATA'], 'MSCore')
+    old_anti_tamper_path = os.path.join(os.environ['APPDATA'], 'MS1Core')
 
     # The case when the software is newly launched
-    # if is_permitted and not (os.path.exists(start_date) or os.path.exists(anti_tamper) or os.path.exists(key)):
-    #     # We delete the old authentication system
-    #     try:
-    #         shutil.rmtree(old_anti_tamper_path)
-    #     except Exception as e:
-    #         pass
-    #     os.makedirs(folder_path)
-    #     subprocess.run(['attrib', '+h', folder_path])
-    #
-    #     with open(anti_tamper, 'wb') as f_tamper, open(start_date, 'wb') as f_start_time, open(key, 'wb') as f_key:
-    #         key = Fernet.generate_key()
-    #         crypter = Fernet(key)
-    #         f_key.write(key)
-    #         f_start_time.write(crypter.encrypt(f"{time.time()}".encode()))
-    #         f_tamper.write(crypter.encrypt(f"{time.time()}".encode()))
-    #     # We are trying to save the initial configuration files for the first initialisation. Our objective is to use
-    #     # this to further confirm the 30 days expiration system and resist - Calendar modification
-    #     return True
+    if is_permitted and not (os.path.exists(start_date) or os.path.exists(anti_tamper) or os.path.exists(key)):
+        # We delete the old authentication system
+        try:
+            shutil.rmtree(old_anti_tamper_path)
+        except Exception as e:
+            pass
+
+        try:
+            shutil.rmtree(folder_path)
+        except Exception as e:
+            pass
+
+        os.makedirs(folder_path)
+        subprocess.run(['attrib', '+h', folder_path])
+
+        with open(anti_tamper, 'wb') as f_tamper, open(start_date, 'wb') as f_start_time, open(key, 'wb') as f_key:
+            key = Fernet.generate_key()
+            crypter = Fernet(key)
+            f_key.write(key)
+            f_start_time.write(crypter.encrypt(f"{time.time()}".encode()))
+            f_tamper.write(crypter.encrypt(f"{time.time()}".encode()))
+        # We are trying to save the initial configuration files for the first initialisation. Our objective is to use
+        # this to further confirm the 30 days expiration system and resist - Calendar modification
+        return True
 
     if os.path.exists(start_date) and os.path.exists(anti_tamper) and os.path.exists(key):
         with open(start_date, 'rb') as f_start_time, open(anti_tamper, 'rb') as f_tamper, open(key, 'rb') as f_key:
@@ -585,7 +589,7 @@ def mac_matters() -> bool:
                 println("Email: ladokihosaha@gmail.com", Status.NEGATIVE_ATTENTION)
                 return False
 
-        total_days = 95
+        total_days = 90
         days_left = total_days - int((time.time() - float(starting_time)) / (3600 * 24))
         str_day_left = f"{days_left} jours restant"
 
@@ -594,7 +598,7 @@ def mac_matters() -> bool:
         else:
             println(f"{str_day_left :.^100}\n", Status.POSITIVE_ATTENTION)
 
-        is_expired = (35 - ((time.time() - float(starting_time)) / (3600 * 24))) <= 0
+        is_expired = (total_days - ((time.time() - float(starting_time)) / (3600 * 24))) <= 0
         if not is_expired:
             # In case nothing is expired we save the last open date in order to resist the tampering
             with open(anti_tamper, 'wb') as f_tamper_w, open(key, 'rb') as f_key:

@@ -1,4 +1,5 @@
 import datetime
+from time import sleep
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -55,6 +56,8 @@ def logout_from_cga(
             driver.switch_to.frame(iframe)
             script = "parent.location='/cgaweb/servlet/cgaweb.servlet.DeconnexionServlet';"
             driver.execute_script(script)
+            driver.switch_to.window(uis.page_cga_home)
+            # In case our account becomes locked
             btn_logout = wait.until(ec.visibility_of_element_located((By.NAME, 'logout')))
             btn_logout.click()
             println(f"Déconnexion", Status.SUCCESS)
